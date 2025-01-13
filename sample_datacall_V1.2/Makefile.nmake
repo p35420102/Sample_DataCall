@@ -1,0 +1,88 @@
+
+!IFDEF D
+!IF $(D) == 1
+DEBUG  = /DDEBUG
+!ELSE
+DEBUG  =
+!ENDIF
+!ELSE
+DEBUG  =
+!ENDIF
+
+OUT = windows_out
+SRC = src
+
+ALL: $(OUT)\sample_datacall_V1.2.exe
+
+
+##############################################################################################
+clean:
+	-@rmdir /S /Q $(OUT)
+##############################################################################################
+MIPC_COMMON_SRCDIR = $(SRC)\common
+MIPC_COMMON_SHARED_OUTDIR = $(OUT)\common_dll
+MIPC_COMMON_STATIC_OUTDIR = $(OUT)\common_lib
+MIPC_COMMON_CFLAGS = $(DEBUG) /Iinclude\msg /Iinclude\common -nologo
+
+{$(MIPC_COMMON_SRCDIR)}.c{$(MIPC_COMMON_SHARED_OUTDIR)}.obj::
+	@echo Compiling...
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	-@if NOT EXIST $(MIPC_COMMON_SHARED_OUTDIR) mkdir $(MIPC_COMMON_SHARED_OUTDIR)
+	@cl $(MIPC_COMMON_CFLAGS) /c $< /Fo$(MIPC_COMMON_SHARED_OUTDIR)\$O
+
+{$(MIPC_COMMON_SRCDIR)}.c{$(MIPC_COMMON_STATIC_OUTDIR)}.obj::
+	@echo Compiling...
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	-@if NOT EXIST $(MIPC_COMMON_STATIC_OUTDIR) mkdir $(MIPC_COMMON_STATIC_OUTDIR)
+	@cl $(MIPC_COMMON_CFLAGS) /DNO_EXPORT /c $< /Fo$(MIPC_COMMON_STATIC_OUTDIR)\$O
+
+##############################################################################################
+MIPC_MSG_SRCDIR = $(SRC)\msg
+MIPC_MSG_SHARED_OUTDIR = $(OUT)\msg_dll
+MIPC_MSG_STATIC_OUTDIR = $(OUT)\msg_lib
+MIPC_MSG_CFLAGS = $(DEBUG) /Iinclude\msg /Iinclude\common -nologo
+MIPC_MSG_SHARED_LIB = $(OUT)\mipc_msg.dll
+MIPC_MSG_STATIC_LIB = $(OUT)\mipc_msg.lib
+
+{$(MIPC_MSG_SRCDIR)}.c{$(MIPC_MSG_SHARED_OUTDIR)}.obj::
+	@echo Compiling...
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	-@if NOT EXIST $(MIPC_MSG_SHARED_OUTDIR) mkdir $(MIPC_MSG_SHARED_OUTDIR)
+	@cl $(MIPC_MSG_CFLAGS) /c $< /Fo$(MIPC_MSG_SHARED_OUTDIR)\$O
+
+$(MIPC_MSG_SHARED_LIB): $(MIPC_MSG_SHARED_OUTDIR)\msg.obj $(MIPC_MSG_SHARED_OUTDIR)\msg_host.obj $(MIPC_MSG_SHARED_OUTDIR)\hashmap.obj $(MIPC_MSG_SHARED_OUTDIR)\list.obj $(MIPC_COMMON_SHARED_OUTDIR)\platform_windows.obj
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	@link /DLL /OUT:$@ $**
+
+{$(MIPC_MSG_SRCDIR)}.c{$(MIPC_MSG_STATIC_OUTDIR)}.obj::
+	@echo Compiling...
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	-@if NOT EXIST $(MIPC_MSG_STATIC_OUTDIR) mkdir $(MIPC_MSG_STATIC_OUTDIR)
+	@cl $(MIPC_MSG_CFLAGS) /DNO_EXPORT /c $< /Fo$(MIPC_MSG_STATIC_OUTDIR)\$O
+
+$(MIPC_MSG_STATIC_LIB): $(MIPC_MSG_STATIC_OUTDIR)\msg.obj $(MIPC_MSG_STATIC_OUTDIR)\msg_host.obj $(MIPC_MSG_STATIC_OUTDIR)\hashmap.obj $(MIPC_MSG_STATIC_OUTDIR)\list.obj $(MIPC_COMMON_STATIC_OUTDIR)\platform_windows.obj
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	@link /lib /OUT:$@ $**
+
+##############################################################################################
+MIPC_TEST_CFLAGS = $(DEBUG) /DNO_EXPORT /Iinclude\msg /Iinclude\common -nologo
+MIPC_TEST_SRCDIR = test
+MIPC_TEST_OUTDIR = $(OUT)\test
+
+{$(MIPC_TEST_SRCDIR)}.c{$(MIPC_TEST_OUTDIR)}.obj::
+	@echo Compiling...
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	-@if NOT EXIST $(MIPC_TEST_OUTDIR) mkdir $(MIPC_TEST_OUTDIR)
+	@cl $(MIPC_TEST_CFLAGS) /c $< /Fo$(MIPC_TEST_OUTDIR)\$O
+
+{sample}.c{$(MIPC_TEST_OUTDIR)}.obj::
+	@echo Compiling...
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	-@if NOT EXIST $(MIPC_TEST_OUTDIR) mkdir $(MIPC_TEST_OUTDIR)
+	@cl $(MIPC_TEST_CFLAGS) /c $< /Fo$(MIPC_TEST_OUTDIR)\$O
+
+##############################################################################################
+$(OUT)\sample_datacall_V1.2.exe: $(MIPC_MSG_STATIC_LIB) $(MIPC_TEST_OUTDIR)\sample_datacall.obj
+	-@if NOT EXIST $(OUT) mkdir $(OUT)
+	-@if NOT EXIST $(MIPC_TEST_OUTDIR) mkdir $(MIPC_TEST_OUTDIR)
+	@cl $(MIPC_TEST_CFLAGS) /Fe$@ $**
